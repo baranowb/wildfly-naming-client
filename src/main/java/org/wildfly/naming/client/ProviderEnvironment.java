@@ -57,6 +57,7 @@ import org.wildfly.common.Assert;
 import org.wildfly.common.expression.Expression;
 import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.util.EnvironmentUtils;
+import org.wildfly.naming.client.util.FastHashtable;
 import org.wildfly.naming.client.util.NetworkUtils;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
@@ -82,7 +83,7 @@ public final class ProviderEnvironment {
     private final List<URI> providerUris;
     private final ConcurrentHashMap<URI, Long> blackList = new ConcurrentHashMap<>(0);
     private final Supplier<AuthenticationContext> authenticationContextSupplier;
-
+    private final Map<String, ?> properties;
     @SuppressWarnings({ "Convert2Lambda", "Anonymous2MethodRef" })
     static final Supplier<AuthenticationContext> DEFAULT_AUTH_CTXT_SUPPLIER = new Supplier<AuthenticationContext>() {
         public AuthenticationContext get() {
@@ -94,6 +95,7 @@ public final class ProviderEnvironment {
         final List<URI> providerUris = builder.getProviderUris();
         this.providerUris = providerUris.isEmpty() ? Collections.emptyList() : providerUris.size() == 1 ? Collections.singletonList(providerUris.get(0)) : Collections.unmodifiableList(new ArrayList<>(providerUris));
         this.authenticationContextSupplier = builder.getAuthenticationContextSupplier();
+        this.properties = builder.getProperties();
     }
 
     /**
@@ -198,12 +200,21 @@ public final class ProviderEnvironment {
     }
 
     /**
+     * Return properties if used to configure builder. Null if there was none.
+     * @return
+     */
+    public Map<String, ?> getProperties() {
+        return this.properties;
+    }
+
+    /**
      * The builder for {@code ProviderEnvironment} instances.
      */
     public static final class Builder {
         private final List<URI> providerUris = new ArrayList<>();
         private final Set<URI> encounteredUris = new HashSet<>();
         private Supplier<AuthenticationContext> authenticationContextSupplier = DEFAULT_AUTH_CTXT_SUPPLIER;
+        private Map<String, ?> properties = null;
 
         /**
          * Construct a new instance.
@@ -467,7 +478,16 @@ public final class ProviderEnvironment {
                 setAuthenticationContextSupplier(new FixedAuthenticationContextSupplier(context, ! overrideDefaultAuth));
             }
 
+            this.properties = new FastHashtable<>(environment);
             return this;
+        }
+
+        /**
+         * Return properties if used to configure builder. Null if there was none.
+         * @return
+         */
+        public Map<String, ?> getProperties() {
+            return this.properties;
         }
 
         private OptionMap getOptionMap(final Map<String, ?> environment, final String prefix, final ClassLoader classLoader) {
